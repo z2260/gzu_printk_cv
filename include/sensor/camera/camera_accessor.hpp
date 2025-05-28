@@ -10,7 +10,6 @@ namespace sensor::camera {
 /**************************************************
 * Gain Accessor
 ***************************************************/
-
 template <typename Derived, typename GainType = float>
 class CameraGainAccessor {
 public:
@@ -48,7 +47,6 @@ public:
 /**************************************************
 * ExposureTime Accessor
 ***************************************************/
-
 template <typename Derived, typename ExposureTimeType = float>
 class CameraExposureTimeAccessor {
 public:
@@ -83,7 +81,6 @@ public:
 /**************************************************
 * Gamma Accessor
 ***************************************************/
-
 template <typename Derived, typename GammaType = float>
 class CameraGammaAccessor {
 public:
@@ -140,7 +137,6 @@ public:
 /**************************************************
 * Resolution Accessor
 ***************************************************/
-
 template <typename Derived, typename ResolutionType = std::pair<int, int>>
 class CameraResolutionAccessor {
 public:
@@ -175,7 +171,6 @@ public:
 /**************************************************
 * Max Frame Rate Accessor
 ***************************************************/
-
 template <typename Derived, typename FrameRateType = float>
 class CameraFrameRateAccessor {
 public:
@@ -210,7 +205,6 @@ public:
 /**************************************************
 * Black Level  Accessor
 ***************************************************/
-
 template <typename Derived, typename BlackLevelType = float>
 class CameraBlackLevelAccessor {
 public:

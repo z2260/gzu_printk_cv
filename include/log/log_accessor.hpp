@@ -23,6 +23,15 @@
 
 namespace logger {
 
+enum class LogLevel {
+    trace = 0,
+    debug = 1,
+    info = 2,
+    warn = 3,
+    error = 4,
+    critical = 5
+};
+
 template <typename T>
 std::string get_type_name() {
     int status;
@@ -43,7 +52,7 @@ std::string get_type_name() {
     return result;
 }
 
-template <typename Derived>
+template <typename Derived, LogLevel CompileLevel = LogLevel::debug>
 class LogAccessor {
 public:
     static std::string class_name() {
@@ -78,99 +87,135 @@ public:
 
     template<typename... Args>
     static void log_trace(std::string_view fmt, const Args&... args) {
-        get_logger()->trace("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::trace) {
+            get_logger()->trace("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
     template<typename... Args>
     static void log_debug(std::string_view fmt, const Args&... args) {
-        get_logger()->debug("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::debug) {
+            get_logger()->debug("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
     template<typename... Args>
     static void log_info(std::string_view fmt, const Args&... args) {
-        get_logger()->info("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::info) {
+            get_logger()->info("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
     template<typename... Args>
     static void log_warn(std::string_view fmt, const Args&... args) {
-        get_logger()->warn("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::warn) {
+            get_logger()->warn("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
     template<typename... Args>
     static void log_error(std::string_view fmt, const Args&... args) {
-        get_logger()->error("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::error) {
+            get_logger()->error("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
     template<typename... Args>
     static void log_critical(std::string_view fmt, const Args&... args) {
-        get_logger()->critical("[{}] " + std::string(fmt), class_name(), args...);
+        if constexpr (CompileLevel <= LogLevel::critical) {
+            get_logger()->critical("[{}] " + std::string(fmt), class_name(), args...);
+        }
     }
 
 #if HAS_SOURCE_LOCATION
     template<typename... Args>
     static void mlog_trace(std::string_view fmt, const Args&... args,
                          const std::source_location loc = std::source_location::current()) {
-        get_logger()->trace("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::trace) {
+            get_logger()->trace("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_debug(std::string_view fmt, const Args&... args,
                          const std::source_location loc = std::source_location::current()) {
-        get_logger()->debug("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::debug) {
+            get_logger()->debug("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_info(std::string_view fmt, const Args&... args,
                         const std::source_location loc = std::source_location::current()) {
-        get_logger()->info("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::info) {
+            get_logger()->info("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_warn(std::string_view fmt, const Args&... args,
                         const std::source_location loc = std::source_location::current()) {
-        get_logger()->warn("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::warn) {
+            get_logger()->warn("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_error(std::string_view fmt, const Args&... args,
                          const std::source_location loc = std::source_location::current()) {
-        get_logger()->error("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::error) {
+            get_logger()->error("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_critical(std::string_view fmt, const Args&... args,
                             const std::source_location loc = std::source_location::current()) {
-        get_logger()->critical("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        if constexpr (CompileLevel <= LogLevel::critical) {
+            get_logger()->critical("[{}::{}@{}] " + std::string(fmt), class_name(), loc.function_name(), loc.line(), args...);
+        }
     }
 #else
     template<typename... Args>
     static void mlog_trace_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->trace("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::trace) {
+            get_logger()->trace("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_debug_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->debug("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::debug) {
+            get_logger()->debug("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_info_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->info("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::info) {
+            get_logger()->info("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_warn_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->warn("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::warn) {
+            get_logger()->warn("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_error_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->error("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::error) {
+            get_logger()->error("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
     template<typename... Args>
     static void mlog_critical_impl(const char* func, int line, std::string_view fmt, const Args&... args) {
-        get_logger()->critical("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        if constexpr (CompileLevel <= LogLevel::critical) {
+            get_logger()->critical("[{}::{}@{}] " + std::string(fmt), class_name(), func, line, args...);
+        }
     }
 
 #define mlog_trace(...) mlog_trace_impl(CURRENT_FUNCTION, CURRENT_LINE, __VA_ARGS__)
