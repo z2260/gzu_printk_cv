@@ -509,6 +509,9 @@ private:
             return false;
         }
 
+        MV_CC_SetBayerCvtQuality(device_handle_.ptr, 1);
+        MV_CC_SetBayerFilterEnable(device_handle_.ptr, 1);
+
         if (MV_CC_OpenDevice(device_handle_.ptr) != MV_OK) {
             MERROR("OpenDevice failed");
             device_handle_.reset();
@@ -575,9 +578,6 @@ private:
         c.enSrcPixelType = info.enPixelType;
         c.enDstPixelType = PixelType_Gvsp_BGR8_Packed;
         c.pDstBuffer = dst.get(); c.nDstBufferSize = dst_sz;
-
-        MV_CC_SetBayerCvtQuality(device_handle_.get(), 1);
-        MV_CC_SetBayerFilterEnable(device_handle_.get(), 1);
 
         if (MV_CC_ConvertPixelTypeEx(device_handle_.get(), &c) != MV_OK)
         {

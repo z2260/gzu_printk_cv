@@ -4,8 +4,13 @@
 #define CONFIG_INI_CONFIG_READER_HPP
 
 #include <fstream>
+#include <sstream>
+#include <cctype>
 #include <regex>
 #include <unordered_map>
+#include <string_view>
+#include <array>
+#include <algorithm>
 
 #include "config/config_reader_base.hpp"
 
@@ -35,7 +40,7 @@ public:
                 line = line.substr(0, comment_pos);
             }
 
-            if (line.empty() || std::all_of(line.begin(), line.end(), isspace)) {
+            if (line.empty() || std::all_of(line.begin(), line.end(), [](unsigned char c) { return std::isspace(c); })) {
                 continue;
             }
 
@@ -65,7 +70,7 @@ public:
     }
 
     std::optional<ConfigValue> get_value_impl(const std::string& path) const {
-        std::vector<std::string> parts = split_path(path);
+        std::vector<std::string_view> parts = split_path(path);
         if (parts.empty()) {
             return std::nullopt;
         }
@@ -74,10 +79,10 @@ public:
         std::string key;
 
         if (parts.size() == 1) {
-            key = parts[0];
+            key = std::string(parts[0]);
         } else {
-            section = parts[0];
-            key = parts[1];
+            section = std::string(parts[0]);
+            key = std::string(parts[1]);
         }
 
         auto section_it = sections_.find(section);
@@ -94,7 +99,7 @@ public:
     }
 
     bool has_path_impl(const std::string& path) const {
-        std::vector<std::string> parts = split_path(path);
+        std::vector<std::string_view> parts = split_path(path);
         if (parts.empty()) {
             return false;
         }
@@ -103,10 +108,10 @@ public:
         std::string key;
 
         if (parts.size() == 1) {
-            key = parts[0];
+            key = std::string(parts[0]);
         } else {
-            section = parts[0];
-            key = parts[1];
+            section = std::string(parts[0]);
+            key = std::string(parts[1]);
         }
 
         auto section_it = sections_.find(section);
@@ -122,7 +127,7 @@ public:
     }
 
     bool set_value_impl(const std::string& path, const ConfigValue& value) {
-        std::vector<std::string> parts = split_path(path);
+        std::vector<std::string_view> parts = split_path(path);
         if (parts.empty()) {
             return false;
         }
@@ -131,10 +136,10 @@ public:
         std::string key;
 
         if (parts.size() == 1) {
-            key = parts[0];
+            key = std::string(parts[0]);
         } else {
-            section = parts[0];
-            key = parts[1];
+            section = std::string(parts[0]);
+            key = std::string(parts[1]);
         }
 
         sections_[section][key] = value;
@@ -183,142 +188,60 @@ private:
     std::string file_path_;
     std::unordered_map<std::string, std::unordered_map<std::string, ConfigValue>> sections_;
 
-    std::vector<std::string> split_path(const std::string& path) const {
-        std::vector<std::string> parts;
-        std::istringstream stream(path);
-        std::string part;
-
-        while (std::getline(stream, part, CONFIG_PATH_SEPARATOR)) {
-            if (!part.empty()) {
-                parts.push_back(part);
+    std::vector<std::string_view> split_path(std::string_view path) const {
+        std::vector<std::string_view> parts;
+        for(size_t b=0, e; b<path.size(); b=e+1){
+            e = path.find_first_of(CONFIG_PATH_SEPARATOR, b);
+            if(e == std::string_view::npos) e = path.size();
+            if(e > b) { // 避免空字符串
+                parts.emplace_back(path.substr(b, e-b));
             }
         }
-
         return parts;
     }
 
     ConfigValue parse_value(const std::string& value) const {
-        if (value == "true" || value == "True" || value == "TRUE" || value == "yes" || value == "Yes" || value == "YES" || value == "1") {
-            return true;
+        if (value.empty()) {
+            return std::string{};
         }
 
-        if (value == "false" || value == "False" || value == "FALSE" || value == "no" || value == "No" || value == "NO" || value == "0") {
-            return false;
+        // 布尔值转换表
+        static constexpr std::array<std::pair<std::string_view, bool>, 8> bool_map = {{
+            {"true", true}, {"false", false}, {"True", true}, {"False", false},
+            {"TRUE", true}, {"FALSE", false}, {"1", true}, {"0", false}
+        }};
+
+        auto bool_it = std::find_if(bool_map.begin(), bool_map.end(),
+            [&value](const auto& pair) { return pair.first == value; });
+        if (bool_it != bool_map.end()) {
+            return bool_it->second;
         }
 
+        // 尝试解析为整数
         try {
-            size_t pos;
-            int int_value = std::stoi(value, &pos);
-            if (pos == value.size()) {
-                return int_value;
+            if (value.find('.') == std::string::npos) {
+                return std::stoi(value);
             }
         } catch (...) {}
 
+        // 尝试解析为浮点数
         try {
-            size_t pos;
-            double double_value = std::stod(value, &pos);
-            if (pos == value.size()) {
-                return double_value;
-            }
+            return std::stod(value);
         } catch (...) {}
 
-        if (value.find(',') != std::string::npos) {
-            std::vector<std::string> elements;
-            std::istringstream stream(value);
-            std::string element;
-
-            while (std::getline(stream, element, ',')) {
-                element.erase(0, element.find_first_not_of(" \t"));
-                element.erase(element.find_last_not_of(" \t") + 1);
-                elements.push_back(element);
-            }
-
-            bool all_int = true;
-            bool all_float = true;
-
-            for (const auto& e : elements) {
-                try {
-                    size_t pos;
-                    std::stoi(e, &pos);
-                    if (pos != e.size()) {
-                        all_int = false;
-                    }
-                } catch (...) {
-                    all_int = false;
-                }
-
-                try {
-                    size_t pos;
-                    std::stod(e, &pos);
-                    if (pos != e.size()) {
-                        all_float = false;
-                    }
-                } catch (...) {
-                    all_float = false;
-                }
-            }
-
-            if (all_int) {
-                std::vector<int> int_values;
-                for (const auto& e : elements) {
-                    int_values.push_back(std::stoi(e));
-                }
-                return int_values;
-            }
-
-            if (all_float) {
-                std::vector<double> double_values;
-                for (const auto& e : elements) {
-                    double_values.push_back(std::stod(e));
-                }
-                return double_values;
-            }
-
-            return elements;
-        }
-
+        // 默认作为字符串
         return value;
     }
 
     std::string config_value_to_string(const ConfigValue& value) const {
-        return std::visit([](auto&& arg) -> std::string {
-            using T = std::decay_t<decltype(arg)>;
+        return std::visit([](const auto& v) -> std::string {
+            using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, std::string>) {
-                return arg;
-            } else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, double>) {
-                return std::to_string(arg);
+                return v;
             } else if constexpr (std::is_same_v<T, bool>) {
-                return arg ? "true" : "false";
-            } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
-                std::string result;
-                for (size_t i = 0; i < arg.size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += arg[i];
-                }
-                return result;
-            } else if constexpr (std::is_same_v<T, std::vector<int>>) {
-                std::string result;
-                for (size_t i = 0; i < arg.size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += std::to_string(arg[i]);
-                }
-                return result;
-            } else if constexpr (std::is_same_v<T, std::vector<double>>) {
-                std::string result;
-                for (size_t i = 0; i < arg.size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += std::to_string(arg[i]);
-                }
-                return result;
-            } else if constexpr (std::is_same_v<T, std::vector<bool>>) {
-                std::string result;
-                for (size_t i = 0; i < arg.size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += arg[i] ? "true" : "false";
-                }
-                return result;
+                return v ? "true" : "false";
             } else {
-                return "";
+                return std::to_string(v);
             }
         }, value);
     }

@@ -4,9 +4,13 @@
 #define SENSOR_CAMERA_UTILS_HPP
 
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "traits/type_traits.hpp"
 
@@ -116,6 +120,21 @@ private:
         return to_buffer(rotated);
     }
 };
+
+// 分发函数模板，用于将原始数据转换为不同的数据类型
+template<typename DataType>
+void dispatch_to_data_type(unsigned char* buf, int width, int height, DataType& data) {
+    if constexpr (std::is_same_v<DataType, cv::Mat>) {
+        // 对于cv::Mat，直接构造而不是memcpy
+        data = cv::Mat(height, width, CV_8UC3, buf).clone();
+    } else if constexpr (std::is_same_v<DataType, std::vector<uint8_t>>) {
+        size_t bytes = width * height * 3; // 假设BGR格式
+        data.resize(bytes);
+        std::copy_n(buf, bytes, data.data());
+    } else {
+        static_assert(std::is_same_v<DataType, void>, "Unsupported data type for dispatch");
+    }
+}
 
 } // namespace sensor::camera
 

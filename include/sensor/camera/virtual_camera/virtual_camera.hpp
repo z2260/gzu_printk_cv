@@ -68,30 +68,32 @@ public:
         return true;
     }
 
-    bool open_impl() {
+    bool open_impl(const source_type& source) {
         std::lock_guard<std::mutex> lock(state_mtx_);
-        CHECK_INIT_RET(false);
-
         if (is_opened_) {
+            MWARN("Camera already opened");
             return true;
         }
 
-        MINFO("Opening virtual camera");
-        bool success = traits::open(source_, source_data_);
-
-        if (success) {
-            is_opened_ = true;
-            current_fps_ = traits::get_fps(source_data_);
-            auto res = traits::get_resolution(source_data_);
-            last_resolution_ = res;
-            MINFO("Camera opened, resolution: {}x{}, frame rate: {}",
-                           res.first, res.second, current_fps_);
-        } else {
-            last_error_ = "Failed to open camera";
-            MERROR(last_error_);
+        source_ = source;
+        data_.open(source_);
+        if (!data_.isOpened()) {
+            MERROR("Failed to open video source");
+            return false;
         }
 
-        return is_opened_;
+        // 自适应FPS处理
+        double fps = data_.get(cv::CAP_PROP_FPS);
+        if (std::isfinite(fps) && fps > 1.0) {
+            current_fps_ = static_cast<int>(fps);
+        } else {
+            current_fps_ = 30; // 默认30fps
+            MWARN("Invalid FPS detected ({}), using default 30fps", fps);
+        }
+
+        MINFO("Camera opened successfully with FPS: {}", current_fps_);
+        is_opened_ = true;
+        return true;
     }
 
     bool close_impl() {
@@ -106,7 +108,7 @@ public:
         }
 
         MINFO("Closing virtual camera");
-        traits::close(source_data_);
+        data_.release();
         is_opened_ = false;
         return true;
     }
@@ -132,7 +134,7 @@ public:
         }
 
         std::lock_guard<std::mutex> lock(frame_mtx_);
-        if (!traits::get_frame(source_data_, data)) {
+        if (!data_.read(data)) {
             last_error_ = "Failed to get frame";
             MERROR(last_error_);
             return false;
@@ -173,7 +175,7 @@ public:
         output_data_type frame;
         {
             std::lock_guard<std::mutex> frame_lock(frame_mtx_);
-            if (!traits::get_frame(source_data_, frame)) {
+            if (!data_.read(frame)) {
                 last_error_ = "Cannot get frame";
                 MERROR(last_error_);
                 return false;
@@ -290,7 +292,7 @@ public:
 
 private:
     source_type source_;
-    source_data_type source_data_;
+    cv::VideoCapture data_;
     output_data_type last_frame_;
     std::atomic<bool> is_initialized_{false};
     std::atomic<bool> is_opened_{false};

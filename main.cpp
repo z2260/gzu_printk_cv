@@ -4,52 +4,53 @@
 #include <opencv2/opencv.hpp>
 
 #include "sensor/camera/virtual_camera/virtual_camera.hpp"
+#include "comm/cpp/message/raw.hpp"
 
 // 用于显示帧率的辅助函数
-void displayFPS(cv::Mat& frame, double fps) {
-    std::stringstream ss;
-    ss << "FPS: " << std::fixed << std::setprecision(1) << fps;
-    cv::putText(frame, ss.str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-}
+// void displayFPS(cv::Mat& frame, double fps) {
+//     std::stringstream ss;
+//     ss << "FPS: " << std::fixed << std::setprecision(1) << fps;
+//     cv::putText(frame, ss.str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
+// }
 
 int main() {
-    {
-        std::cout << "示例 1: 从图像文件创建虚拟相机" << std::endl;
+    // {
+        std::cout << "示例 从图像文件创建虚拟相机" << std::endl;
 
-        sensor::camera::ImageCamera image_camera(PROJECT_ASSETS_DIR "/image/test_image_01.jpg");
-
-        if (!image_camera.init()) {
-            std::cerr << "无法初始化图像相机" << std::endl;
-            return -1;
-        }
-
-        if (!image_camera.open()) {
-            std::cerr << "无法打开图像文件" << std::endl;
-            return -1;
-        }
-
-        std::pair<int, int> resolution = {640, 480};
-        if (!image_camera.set_resolution(resolution)) {
-            std::cerr << "无法设置分辨率" << std::endl;
-        }
-
-        if (!image_camera.start_capture()) {
-            std::cerr << "无法开始捕获" << std::endl;
-            return -1;
-        }
-
-        if (!image_camera.is_captured()) {
-            std::cerr << "<UNK>" << std::endl;
-        }
-
-        cv::Mat frame;
-        if (image_camera.get_frame(frame)) {
-            cv::imwrite("image_camera_output.jpg", frame);
-            std::cout << "Image saved to image_camera_output.jpg" << std::endl;
-        }
-
-        image_camera.close();
-    }
+    //     sensor::camera::ImageCamera image_camera(PROJECT_ASSETS_DIR "/image/test_image_01.jpg");
+    //
+    //     if (!image_camera.init()) {
+    //         std::cerr << "无法初始化图像相机" << std::endl;
+    //         return -1;
+    //     }
+    //
+    //     if (!image_camera.open()) {
+    //         std::cerr << "无法打开图像文件" << std::endl;
+    //         return -1;
+    //     }
+    //
+    //     std::pair<int, int> resolution = {640, 480};
+    //     if (!image_camera.set_resolution(resolution)) {
+    //         std::cerr << "无法设置分辨率" << std::endl;
+    //     }
+    //
+    //     if (!image_camera.start_capture()) {
+    //         std::cerr << "无法开始捕获" << std::endl;
+    //         return -1;
+    //     }
+    //
+    //     if (!image_camera.is_captured()) {
+    //         std::cerr << "<UNK>" << std::endl;
+    //     }
+    //
+    //     cv::Mat frame;
+    //     if (image_camera.get_frame(frame)) {
+    //         cv::imwrite("image_camera_output.jpg", frame);
+    //         std::cout << "Image saved to image_camera_output.jpg" << std::endl;
+    //     }
+    //
+    //     image_camera.close();
+    // }
     //
     // // 2. 视频源示例
     // {

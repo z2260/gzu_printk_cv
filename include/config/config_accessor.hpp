@@ -4,21 +4,34 @@
 #define CONFIG_CONFIG_ACCESSOR_HPP
 
 #include <string>
+#include <string_view>
 #include <memory>
 #include <optional>
+#include <filesystem>
+#include <cstdlib>
+
+#ifdef __GNUG__
 #include <cxxabi.h>
+#endif
 
 #include "config/config_manager.hpp"
 
 namespace config {
 
 template <typename T>
-std::string get_type_name() {
-    int status;
-    char* demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-    std::string result = (status == 0) ? demangled : typeid(T).name();
-    std::free(demangled);
-    return result;
+const std::string& get_type_name() {
+    static const std::string cached = []{
+        #ifdef __GNUG__
+            int status{};
+            char* buf = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+            std::string r = (status == 0) ? buf : typeid(T).name();
+            std::free(buf);
+            return r;
+        #else
+            return std::string{typeid(T).name()};
+        #endif
+    }();
+    return cached;
 }
 
 template <typename Derived, typename ReaderType = IniConfigReader>
@@ -29,6 +42,9 @@ public:
     }
 
     static std::shared_ptr<ReaderType> get_config_reader() {
+        if (!config_reader_) {
+            init_config_reader();
+        }
         return config_reader_;
     }
 
@@ -77,19 +93,21 @@ protected:
     ~ConfigAccessor() = default;
 
 private:
-    static std::shared_ptr<ReaderType> init_config_reader() {
-        static std::string name = config_name();
+    static void init_config_reader() {
+        if (config_reader_) return; // 双检查锁模式
+
+        std::string name = config_name();
         try {
-            return ConfigManager::getInstance().getConfigReader<ReaderType>(name);
+            config_reader_ = ConfigManager::getInstance().getConfigReader<ReaderType>(name);
         } catch (const std::runtime_error&) {
             std::filesystem::create_directories("configs");
             std::string config_path = "configs/" + name +
                 (std::is_same_v<ReaderType, IniConfigReader> ? ".ini" : ".json");
-            return ConfigManager::getInstance().createConfigReader<ReaderType>(name, config_path);
+            config_reader_ = ConfigManager::getInstance().createConfigReader<ReaderType>(name, config_path);
         }
     }
 
-    static inline std::shared_ptr<ReaderType> config_reader_ = init_config_reader();
+    static inline std::shared_ptr<ReaderType> config_reader_;
 };
 
 } // namespace config

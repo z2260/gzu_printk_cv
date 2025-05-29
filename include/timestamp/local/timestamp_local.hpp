@@ -10,23 +10,32 @@
 
 namespace timestamp {
 
-/**************************************************
-* System Timestamp (From Std Library)
-***************************************************/
-class SystemTimestamp {
-public:
-    using time_point_t = std::chrono::system_clock::time_point;
+template<typename Clock>
+struct ClockPolicy {
+    using time_point = typename Clock::time_point;
 
-    time_point_t now() const {
-        return std::chrono::system_clock::now();
+    static time_point now() noexcept {
+        return Clock::now();
     }
 
-    int64_t to_ns(const time_point_t& tp) const {
+    static int64_t to_ns(const time_point& tp) noexcept {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(
             tp.time_since_epoch()).count();
     }
 
-    std::string to_string(const time_point_t& tp) const {
+    static std::string to_string(const time_point& tp) {
+        if constexpr (std::is_same_v<Clock, std::chrono::system_clock>) {
+            return format_system_time(tp);
+        } else {
+            auto ns = to_ns(tp);
+            std::ostringstream oss;
+            oss << ns << " ns";
+            return oss.str();
+        }
+    }
+
+private:
+    static std::string format_system_time(const time_point& tp) {
         auto time_t_value = std::chrono::system_clock::to_time_t(tp);
         std::tm tm_buf;
 
@@ -38,12 +47,31 @@ public:
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             tp.time_since_epoch() % std::chrono::seconds(1)).count();
 
-        char buffer[32];
-        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_buf);
-
         std::ostringstream oss;
-        oss << buffer << '.' << std::setfill('0') << std::setw(3) << ms;
+        oss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S")
+            << '.' << std::setfill('0') << std::setw(3) << ms;
         return oss.str();
+    }
+};
+
+/**************************************************
+* System Timestamp (From Std Library)
+***************************************************/
+class SystemTimestamp {
+public:
+    using time_point_t = std::chrono::system_clock::time_point;
+    using policy_t = ClockPolicy<std::chrono::system_clock>;
+
+    time_point_t now() const noexcept {
+        return policy_t::now();
+    }
+
+    int64_t to_ns(const time_point_t& tp) const noexcept {
+        return policy_t::to_ns(tp);
+    }
+
+    std::string to_string(const time_point_t& tp) const {
+        return policy_t::to_string(tp);
     }
 };
 
@@ -53,23 +81,24 @@ public:
 class SteadyTimestamp {
 public:
     using time_point_t = std::chrono::steady_clock::time_point;
+    using policy_t = ClockPolicy<std::chrono::steady_clock>;
 
-    time_point_t now() const {
-        return std::chrono::steady_clock::now();
+    time_point_t now() const noexcept {
+        return policy_t::now();
     }
 
-    int64_t to_ns(const time_point_t& tp) const {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(
-            tp.time_since_epoch()).count();
+    int64_t to_ns(const time_point_t& tp) const noexcept {
+        return policy_t::to_ns(tp);
     }
 
     std::string to_string(const time_point_t& tp) const {
-        auto ns = to_ns(tp);
-        std::ostringstream oss;
-        oss << ns << " ns";
-        return oss.str();
+        return policy_t::to_string(tp);
     }
 };
+
+// 便利的类型别名
+using SystemClock = ClockPolicy<std::chrono::system_clock>;
+using SteadyClock = ClockPolicy<std::chrono::steady_clock>;
 
 } // namespace timestamp
 
